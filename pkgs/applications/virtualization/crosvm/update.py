@@ -80,13 +80,16 @@ position = json.loads(subprocess.check_output(argv).decode('utf-8'))
 filename = re.match(r'[^:]*', position)[0]
 
 # Write the output.
-with open(dirname(filename) + '/upstream-info.json', 'w') as out:
+with open(f'{dirname(filename)}/upstream-info.json', 'w') as out:
     json.dump(data, out, indent=2)
     out.write('\n')
 
 # Generate a Cargo.lock
-run = ['.',
-       dirname(abspath(__file__)) + '/generate-cargo.sh',
-       dirname(filename) + '/Cargo.lock']
+run = [
+    '.',
+    f'{dirname(abspath(__file__))}/generate-cargo.sh',
+    f'{dirname(filename)}/Cargo.lock',
+]
+
 expr = '(import ./. {}).crosvm.overrideAttrs (_: { dontCargoSetupPostUnpack = true; })'
 subprocess.run(['nix-shell', '-E', expr, '--run', shlex.join(run)])

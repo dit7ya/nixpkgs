@@ -70,8 +70,7 @@ def get_cargo_sha256(drv_path: str):
         raise ValueError("Did not find expected hash mismatch message")
 
     for l in lines:
-        m = re.match(r"\s+got:\s+(.+)$", l)
-        if m:
+        if m := re.match(r"\s+got:\s+(.+)$", l):
             return m.group(1)
 
     raise ValueError("Could not extract actual sha256 hash: ", stderr)

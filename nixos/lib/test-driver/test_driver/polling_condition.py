@@ -26,10 +26,7 @@ class PollingCondition:
         self.seconds_interval = seconds_interval
 
         if description is None:
-            if condition.__doc__:
-                self.description = condition.__doc__
-            else:
-                self.description = condition.__name__
+            self.description = condition.__doc__ or condition.__name__
         else:
             self.description = str(description)
 

@@ -76,9 +76,11 @@ class OurVersionEncoder(json.JSONEncoder):
     def default(self, obj):
         # the other way around to avoid issues with
         # newer setuptools having strict/legacy versions
-        if not isinstance(obj, (dict, str)):
-            return str(obj)
-        return json.JSONEncoder.default(self, obj)
+        return (
+            json.JSONEncoder.default(self, obj)
+            if isinstance(obj, (dict, str))
+            else str(obj)
+        )
 
 
 def main(repo, target):

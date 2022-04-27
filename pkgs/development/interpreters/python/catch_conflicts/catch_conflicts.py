@@ -7,19 +7,20 @@ packages = collections.defaultdict(list)
 
 for f in sys.path:
     for req in pkg_resources.find_distributions(f):
-        if req not in packages[req.project_name]:
-            # some exceptions inside buildPythonPackage
-            if req.project_name in ['setuptools', 'pip', 'wheel']:
-                continue
+        if req not in packages[req.project_name] and req.project_name not in [
+            'setuptools',
+            'pip',
+            'wheel',
+        ]:
             packages[req.project_name].append(req)
 
 
 for name, duplicates in packages.items():
     if len(duplicates) > 1:
         do_abort = True
-        print("Found duplicated packages in closure for dependency '{}': ".format(name))
+        print(f"Found duplicated packages in closure for dependency '{name}': ")
         for dup in duplicates:
-            print("  " + repr(dup))
+            print(f"  {repr(dup)}")
 
 if do_abort:
     print("")

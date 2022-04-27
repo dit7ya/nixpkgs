@@ -131,8 +131,7 @@ class Repo:
             cmd.append(ref)
         log.debug(cmd)
         data = subprocess.check_output(cmd)
-        loaded = json.loads(data)
-        return loaded
+        return json.loads(data)
 
     def prefetch(self, ref: Optional[str]) -> str:
         print("Prefetching")
@@ -163,8 +162,7 @@ class RepoGitHub(Repo):
         return self.repo
 
     def url(self, path: str) -> str:
-        res = urljoin(f"https://github.com/{self.owner}/{self.repo}/", path)
-        return res
+        return urljoin(f"https://github.com/{self.owner}/{self.repo}/", path)
 
     @retry(urllib.error.URLError, tries=4, delay=3, backoff=2)
     def has_submodules(self) -> bool:
@@ -211,11 +209,11 @@ class RepoGitHub(Repo):
 
 
     def prefetch(self, commit: str) -> str:
-        if self.has_submodules():
-            sha256 = super().prefetch(commit)
-        else:
-            sha256 = self.prefetch_github(commit)
-        return sha256
+        return (
+            super().prefetch(commit)
+            if self.has_submodules()
+            else self.prefetch_github(commit)
+        )
 
     def prefetch_github(self, ref: str) -> str:
         cmd = ["nix-prefetch-url", "--unpack", self.url(f"archive/{ref}.tar.gz")]
@@ -245,10 +243,7 @@ class PluginDesc:
 
     @property
     def name(self):
-        if self.alias is None:
-            return self.repo.name
-        else:
-            return self.alias
+        return self.repo.name if self.alias is None else self.alias
 
     def __lt__(self, other):
         return self.repo.name < other.repo.name
@@ -368,10 +363,10 @@ class Editor:
 
     @property
     def attr_path(self):
-        return self.name + "Plugins"
+        return f"{self.name}Plugins"
 
     def get_drv_name(self, name: str):
-        return self.attr_path + "." + name
+        return f"{self.attr_path}.{name}"
 
     def rewrite_input(self, *args, **kwargs):
         return rewrite_input(*args, **kwargs)
@@ -456,7 +451,7 @@ def get_current_plugins(editor: Editor) -> List[Plugin]:
     data = json.loads(out)
     plugins = []
     for name, attr in data.items():
-        print("get_current_plugins: name %s" % name)
+        print(f"get_current_plugins: name {name}")
         p = Plugin(name, attr["rev"], attr["submodules"], attr["sha256"])
         plugins.append(p)
     return plugins
@@ -510,10 +505,10 @@ def check_results(
             failures.append((pdesc.name, result))
         else:
             plugins.append((pdesc, result))
-            redirects.update(redirect)
+            redirects |= redirect
 
     print(f"{len(results) - len(failures)} plugins were checked", end="")
-    if len(failures) == 0:
+    if not failures:
         print()
         return plugins, redirects
     else:
@@ -528,12 +523,10 @@ def make_repo(uri: str, branch) -> Repo:
     '''Instantiate a Repo with the correct specialization depending on server (gitub spec)'''
     # dumb check to see if it's of the form owner/repo (=> github) or https://...
     res = urlparse(uri)
-    if res.netloc in [ "github.com", ""]:
-        res = res.path.strip('/').split('/')
-        repo = RepoGitHub(res[0], res[1], branch)
-    else:
-        repo = Repo(uri.strip(), branch)
-    return repo
+    if res.netloc not in ["github.com", ""]:
+        return Repo(uri.strip(), branch)
+    res = res.path.strip('/').split('/')
+    return RepoGitHub(res[0], res[1], branch)
 
 
 def get_cache_path(cache_file_name: str) -> Optional[Path]:
@@ -551,10 +544,8 @@ class Cache:
     def __init__(self, initial_plugins: List[Plugin], cache_file_name: str) -> None:
         self.cache_file = get_cache_path(cache_file_name)
 
-        downloads = {}
-        for plugin in initial_plugins:
-            downloads[plugin.commit] = plugin
-        downloads.update(self.load())
+        downloads = {plugin.commit: plugin for plugin in initial_plugins}
+        downloads |= self.load()
         self.downloads = downloads
 
     def load(self) -> Dict[str, Plugin]:
@@ -577,9 +568,7 @@ class Cache:
 
         os.makedirs(self.cache_file.parent, exist_ok=True)
         with open(self.cache_file, "w+") as f:
-            data = {}
-            for name, attr in self.downloads.items():
-                data[name] = attr.as_json()
+            data = {name: attr.as_json() for name, attr in self.downloads.items()}
             json.dump(data, f, indent=4, sort_keys=True)
 
     def __getitem__(self, key: str) -> Optional[Plugin]:
@@ -683,8 +672,8 @@ def update_plugins(editor: Editor, args):
         append = [ pdesc ]
         editor.rewrite_input(fetch_config, args.input_file, editor.deprecated, append=append)
         update()
-        plugin, _ = prefetch_plugin(pdesc, )
         if autocommit:
+            plugin, _ = prefetch_plugin(pdesc, )
             commit(
                 nixpkgs_repo,
                 "{drv_name}: init at {version}".format(

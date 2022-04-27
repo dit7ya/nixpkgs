@@ -45,7 +45,7 @@ class DiscourseVersion:
             self.tag = version
             self.version = version.lstrip('v')
         else:
-            self.tag = 'v' + version
+            self.tag = f'v{version}'
             self.version = version
         self.split_version = LooseVersion(self.version).version
 
@@ -72,8 +72,7 @@ class DiscourseVersion:
             elif 'beta' in [this_ver, other_ver]:
                 # release version (None) is greater than beta
                 return this_ver is None
-        else:
-            return False
+        return False
 
 
 class DiscourseRepo:
@@ -228,11 +227,7 @@ def update(rev):
     """
     repo = DiscourseRepo()
 
-    if rev == 'latest':
-        version = repo.versions[0]
-    else:
-        version = DiscourseVersion(rev)
-
+    version = repo.versions[0] if rev == 'latest' else DiscourseVersion(rev)
     logger.debug(f"Using rev {version.tag}")
     logger.debug(f"Using version {version.version}")
 
@@ -270,11 +265,7 @@ def update_mail_receiver(rev):
     """
     repo = DiscourseRepo(repo="mail-receiver")
 
-    if rev == 'latest':
-        version = repo.versions[0]
-    else:
-        version = DiscourseVersion(rev)
-
+    version = repo.versions[0] if rev == 'latest' else DiscourseVersion(rev)
     _call_nix_update('discourse-mail-receiver', version.version)
 
 

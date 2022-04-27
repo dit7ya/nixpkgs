@@ -68,7 +68,7 @@ def Tokenise(s):
         elif s[i] == '}' and i+1 < len(s) and s[i+1] == '}':
             if i > last:
                 yield s[last:i]
-            if len(stack) == 0:
+            if not stack:
                 yield "}}"
                 i += 2
             elif stack[-1] == 2:
@@ -82,7 +82,7 @@ def Tokenise(s):
             else:
                 raise SyntaxError()
             last = i
-        elif s[i] == ':' or s[i] == '|':
+        elif s[i] in [':', '|']:
             if i > last:
                 yield s[last:i]
             yield Delimiter(s[i])
@@ -94,15 +94,6 @@ def Tokenise(s):
             yield Equals()
             i += 1
             last = i
-        #elif s[i] == ' ' or s[i] == '\t' or s[i] == '\n':
-        #    if i > last:
-        #        yield s[last:i]
-        #    last = i
-        #    m = re.match(r"\s+", s[i:])
-        #    assert m
-        #    yield Whitespace(m.group(0))
-        #    i += len(m.group(0))
-        #    last = i
         else:
             i += 1
     if i > last:
@@ -462,9 +453,7 @@ Parts = {
     'Usage notes': None,
     'Verbal noun': "v.n.",
 }
-PartsUsed = {}
-for p in Parts.keys():
-    PartsUsed[p] = 0
+PartsUsed = {p: 0 for p in Parts}
 
 def encode(s):
     r = e(s)
@@ -473,10 +462,7 @@ def encode(s):
 
 def dowikilink(m):
     a = m.group(1).split("|")
-    if len(a) > 1:
-        link = a[1]
-    else:
-        link = a[0]
+    link = a[1] if len(a) > 1 else a[0]
     if ':' in link:
         link = ""
     return link
@@ -487,12 +473,11 @@ def dotemplate(m):
     args = {}
     n = 0
     for a in aa:
-        am = re.match(r"(.*?)(=(.*))?", a)
-        if am:
-            args[am.group(1)] = am.group(3)
+        if am := re.match(r"(.*?)(=(.*))?", a):
+            args[am[1]] = am[3]
         else:
             n += 1
-            args[n] = am.group(1)
+            args[n] = am[1]
 
     #if aa[0] in seentemplates:
     #    seentemplates[aa[0]] += 1
@@ -557,8 +542,10 @@ def dewiki(body, indent = 0):
                     subsequent_indent = "        ")
             else:
                 n += 1
-                wlines = textwrap.wrap(str(n) + ". " + lines[i][1:].strip(),
-                    subsequent_indent = "   ")
+                wlines = textwrap.wrap(
+                    f"{n}. {lines[i][1:].strip()}", subsequent_indent="   "
+                )
+
         elif len(lines[i]) > 0 and lines[i][0] == "*":
             n = 0
             wlines = textwrap.wrap(lines[i][1:].strip(),
@@ -613,10 +600,7 @@ def parse(word, text):
 
 def formatFull(word, doc):
     def f(depth, section):
-        if section.heading:
-            r = "  "*(depth-1) + section.heading + "\n\n"
-        else:
-            r = ""
+        r = "  "*(depth-1) + section.heading + "\n\n" if section.heading else ""
         if section.body:
             r += dewiki(section.body, depth+1)+"\n"
         #r += "".join("  "*depth + x + "\n" for x in dewiki(section.body))
@@ -641,7 +625,7 @@ def formatNormal(word, doc):
                 #    r += "  "*(depth-1) + word + " (" + p + ")\n\n"
                 r += "  "*(depth-1) + section.heading + "\n\n"
             else:
-                print >>errors, "Unknown part: (%s) %s" % (word, section.heading)
+                (print >>errors, f"Unknown part: ({word}) {section.heading}")
                 return ""
         elif depth > posdepth:
             return ""
@@ -665,21 +649,16 @@ def formatBrief(word, doc):
             h = section.heading
             if not section.heading or section.heading.startswith("Etymology"):
                 posdepth += 1
-            elif section.heading in Parts:
-                #h = Parts[section.heading]
-                #if h:
-                #    h = "%s (%s)" % (word, h)
-                pass
             stack.append([h, False])
         elif depth > 0:
             stack.append([section.heading, False])
         else:
-            stack.append(["%h " + section.heading, False])
+            stack.append([f"%h {section.heading}", False])
         r = ""
         #if section.heading:
         #    r += "  "*(depth-1) + section.heading + "\n"
         body = ''.join(x+"\n" for x in section.body.split("\n") if len(x) > 0 and x[0] == '#')
-        if len(body) > 0:
+        if body != '':
             for i in range(len(stack)):
                 if not stack[i][1]:
                     if stack[i][0]:
@@ -740,9 +719,8 @@ class WordHandler(WikiHandler):
     def checkPage(self, page):
         return ':' not in page
     def doPage(self, page, text):
-        m = re.match(r"#redirect\s*\[\[(.*?)\]\]", text, re.IGNORECASE)
-        if m:
-            out.write("  See <%s>" % page)
+        if m := re.match(r"#redirect\s*\[\[(.*?)\]\]", text, re.IGNORECASE):
+            out.write(f"  See <{page}>")
             return
         doc = parse(page, text)
         out.write(formatBrief(page, doc))
@@ -764,11 +742,11 @@ errors = codecs.open("mkdict.err", "w", "utf_8")
 e = codecs.getencoder("utf_8")
 
 Templates = {}
-f = os.popen("bunzip2 -c %s" % fn, "r")
+f = os.popen(f"bunzip2 -c {fn}", "r")
 xml.sax.parse(f, TemplateHandler())
 f.close()
 
-f = os.popen("bunzip2 -c %s" % fn, "r")
+f = os.popen(f"bunzip2 -c {fn}", "r")
 out = codecs.getwriter("utf_8")(
         os.popen("dictfmt -p wiktionary-en --locale en_US.UTF-8 --columns 0 -u http://en.wiktionary.org", "w"))
 

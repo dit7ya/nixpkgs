@@ -56,7 +56,7 @@ def archive_paths_to(obj, paths, mtime):
     # gettarinfo makes the paths relative, this makes them
     # absolute again
     def append_root(ti):
-        ti.name = "/" + ti.name
+        ti.name = f"/{ti.name}"
         return ti
 
     def apply_filters(ti):
@@ -199,9 +199,7 @@ def overlay_base_config(from_image, final_config):
 
     base_config = from_image.image_json["config"]
 
-    # Preserve environment from base image
-    final_env = base_config.get("Env", []) + final_config.get("Env", [])
-    if final_env:
+    if final_env := base_config.get("Env", []) + final_config.get("Env", []):
         # Resolve duplicates (last one wins) and format back as list
         resolved_env = {entry.split("=", 1)[0]: entry for entry in final_env}
         final_config["Env"] = list(resolved_env.values())

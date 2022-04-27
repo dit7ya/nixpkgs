@@ -14,15 +14,14 @@ class EnvDefault(argparse.Action):
     """
 
     def __init__(self, envvar, required=False, default=None, nargs=None, **kwargs):  # type: ignore
-        if not default and envvar:
-            if envvar in os.environ:
-                if nargs is not None and (nargs.isdigit() or nargs in ["*", "+"]):
-                    default = os.environ[envvar].split()
-                else:
-                    default = os.environ[envvar]
-                kwargs["help"] = (
-                    kwargs["help"] + f" (default from environment: {default})"
-                )
+        if not default and envvar and envvar in os.environ:
+            if nargs is not None and (nargs.isdigit() or nargs in ["*", "+"]):
+                default = os.environ[envvar].split()
+            else:
+                default = os.environ[envvar]
+            kwargs["help"] = (
+                kwargs["help"] + f" (default from environment: {default})"
+            )
         if required and default:
             required = False
         super(EnvDefault, self).__init__(

@@ -20,16 +20,13 @@ Option = collections.namedtuple('Option', ['name', 'value'])
 
 # pivot a dict of options keyed by their display name to a dict keyed by their path
 def pivot(options: Dict[str, JSON]) -> Dict[Key, Option]:
-    result: Dict[Key, Option] = dict()
-    for (name, opt) in options.items():
-        result[Key(opt['loc'])] = Option(name, opt)
-    return result
+    return {Key(opt['loc']): Option(name, opt) for (name, opt) in options.items()}
 
 # pivot back to indexed-by-full-name
 # like the docbook build we'll just fail if multiple options with differing locs
 # render to the same option name.
 def unpivot(options: Dict[Key, Option]) -> Dict[str, JSON]:
-    result: Dict[str, Dict] = dict()
+    result: Dict[str, Dict] = {}
     for (key, opt) in options.items():
         if opt.name in result:
             raise RuntimeError(
