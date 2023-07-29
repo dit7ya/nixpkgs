@@ -4482,6 +4482,8 @@ with pkgs;
 
   clipman = callPackage ../tools/wayland/clipman { };
 
+  hybridbar = callPackage ../tools/wayland/hybridbar { };
+
   kabeljau = callPackage ../games/kabeljau { };
 
   kanshi = callPackage ../tools/wayland/kanshi { };
